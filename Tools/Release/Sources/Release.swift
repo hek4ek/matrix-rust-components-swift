@@ -11,22 +11,22 @@ struct Release: AsyncParsableCommand {
     var localOnly = false
     
     var apiToken: String {
-        get throws {
+        get {
             if let envToken = ProcessInfo.processInfo.environment["GITHUB_TOKEN"] {
                 return envToken
             }
-            else if let netrcToken = try? NetrcParser.parse(file: FileManager.default.homeDirectoryForCurrentUser.appending(component: ".netrc"))?
+            else if let netrcToken = try? NetrcParser.parse(file: FileManager.default.homeDirectoryForCurrentUser.appending(component: ".netrc"))
                 .authorization(for: URL(string: "https://api.github.com")!)?
                 .password {
                 return netrcToken
             }
             else {
-                throw ValidationError("GitHub token not found. Set GITHUB_TOKEN env variable or add it to ~/.netrc.")
+                return "GitHub token not found. Set GITHUB_TOKEN env variable or add it to ~/.netrc."
             }
         }
     }    
-    var sourceRepo = Repository(owner: "hek4ek", name: "matrix-rust-sdk")
-    var packageRepo = Repository(owner: "hek4ek", name: "matrix-rust-components-swift")
+    var sourceRepo = Repository(owner: "matrix-org", name: "matrix-rust-sdk")
+    var packageRepo = Repository(owner: "matrix-org", name: "matrix-rust-components-swift")
     
     var packageDirectory = URL(fileURLWithPath: #file)
         .deletingLastPathComponent() // Release.swift
