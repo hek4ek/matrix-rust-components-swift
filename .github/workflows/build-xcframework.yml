@@ -49,7 +49,7 @@ jobs:
       # Шаг 4: Генерация версии
       - name: Generate version
         id: version
-        working-directory: ./matrix-rust-sdk
+        working-directory: ./../matrix-rust-sdk
         run: |
           DATE_VERSION="v1.0.18-custom-$(date +%Y%m%d)"
           echo "version=${DATE_VERSION}" >> $GITHUB_OUTPUT
