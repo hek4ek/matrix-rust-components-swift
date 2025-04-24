@@ -64,23 +64,4 @@ jobs:
           cd ..
           echo "current dir: $(pwd)"
           echo "current dir: $(ls)"
-          swift run --package-path ./matrix-rust-components-swift/Tools/Release release --version v1.0.18-custom-20250423
-
-      # Шаг 6: Обновление Package.swift
-      - name: Update Package.swift
-        working-directory: ./matrix-rust-sdk
-        run: |
-          NEW_CHECKSUM=$(swift package compute-checksum MatrixSDKFFI.xcframework.zip)
-          sed -i '' "s/checksum = \".*\"/checksum = \"$NEW_CHECKSUM\"/g" Package.swift
-          sed -i '' "s|version = \".*\"|version = \"${{ steps.version.outputs.version }}\"|g" Package.swift
-          cat Package.swift
-
-      # Шаг 7: Коммит и пуш изменений
-      - name: Commit and push changes
-        working-directory: ./matrix-rust-sdk
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add Package.swift
-          git commit -m "Update XCFramework to ${{ steps.version.outputs.version }}"
-          git push https://x-access-token:$GITHUB_TOKEN@github.com/hek4ek/matrix-rust-sdk.git main
+          swift run --package-path ./matrix-rust-components-swift/Tools/Release release --version ${{ steps.version.outputs.version }}
