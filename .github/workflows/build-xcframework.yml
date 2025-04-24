@@ -59,6 +59,10 @@ jobs:
         working-directory: ./Tools/Release
         run: |
           echo "current dir: $(pwd)"
+          echo "current dir: $(ls)"
+          cd ..
+          echo "current dir: $(pwd)"
+          echo "current dir: $(ls)"
           swift run release --version ${{ steps.version.outputs.version }}
 
       # Шаг 6: Обновление Package.swift
