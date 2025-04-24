@@ -2331,7 +2331,7 @@ public protocol ClientBuilderProtocol : AnyObject {
      *
      * [MSC4108]: https://github.com/matrix-org/matrix-spec-proposals/pull/4108
      */
-    func buildWithQrCode(qrCodeData: QrCodeData, oidcConfiguration: OidcConfiguration, allowedServerNameOrUrl: String, progressListener: QrLoginProgressListener) async throws  -> Client
+    func buildWithQrCode(qrCodeData: QrCodeData, oidcConfiguration: OidcConfiguration, progressListener: QrLoginProgressListener) async throws  -> Client
     
     func crossProcessStoreLocksHolderName(holderName: String)  -> ClientBuilder
     
@@ -2584,13 +2584,13 @@ open func build()async throws  -> Client {
      *
      * [MSC4108]: https://github.com/matrix-org/matrix-spec-proposals/pull/4108
      */
-open func buildWithQrCode(qrCodeData: QrCodeData, oidcConfiguration: OidcConfiguration, allowedServerNameOrUrl: String, progressListener: QrLoginProgressListener)async throws  -> Client {
+open func buildWithQrCode(qrCodeData: QrCodeData, oidcConfiguration: OidcConfiguration, progressListener: QrLoginProgressListener)async throws  -> Client {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_matrix_sdk_ffi_fn_method_clientbuilder_build_with_qr_code(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeQrCodeData.lower(qrCodeData),FfiConverterTypeOidcConfiguration.lower(oidcConfiguration),FfiConverterString.lower(allowedServerNameOrUrl),FfiConverterCallbackInterfaceQrLoginProgressListener.lower(progressListener)
+                    FfiConverterTypeQrCodeData.lower(qrCodeData),FfiConverterTypeOidcConfiguration.lower(oidcConfiguration),FfiConverterCallbackInterfaceQrLoginProgressListener.lower(progressListener)
                 )
             },
             pollFunc: ffi_matrix_sdk_ffi_rust_future_poll_pointer,
@@ -5290,8 +5290,6 @@ public func FfiConverterTypeNotificationSettings_lower(_ value: NotificationSett
  */
 public protocol QrCodeDataProtocol : AnyObject {
     
-    func serverName()  -> String?
-    
 }
 
 /**
@@ -5353,13 +5351,6 @@ public static func fromBytes(bytes: Data)throws  -> QrCodeData {
 }
     
 
-    
-open func serverName() -> String? {
-    return try!  FfiConverterOptionString.lift(try! rustCall() {
-    uniffi_matrix_sdk_ffi_fn_method_qrcodedata_server_name(self.uniffiClonePointer(),$0
-    )
-})
-}
     
 
 }
@@ -15069,10 +15060,6 @@ public struct OidcConfiguration {
      */
     public var policyUri: String?
     /**
-     * An array of e-mail addresses of people responsible for this client.
-     */
-    public var contacts: [String]?
-    /**
      * Pre-configured registrations for use with homeservers that don't support
      * dynamic client registration.
      *
@@ -15104,9 +15091,6 @@ public struct OidcConfiguration {
          * A URI that contains the client's privacy policy.
          */policyUri: String?, 
         /**
-         * An array of e-mail addresses of people responsible for this client.
-         */contacts: [String]?, 
-        /**
          * Pre-configured registrations for use with homeservers that don't support
          * dynamic client registration.
          *
@@ -15119,7 +15103,6 @@ public struct OidcConfiguration {
         self.logoUri = logoUri
         self.tosUri = tosUri
         self.policyUri = policyUri
-        self.contacts = contacts
         self.staticRegistrations = staticRegistrations
     }
 }
@@ -15146,9 +15129,6 @@ extension OidcConfiguration: Equatable, Hashable {
         if lhs.policyUri != rhs.policyUri {
             return false
         }
-        if lhs.contacts != rhs.contacts {
-            return false
-        }
         if lhs.staticRegistrations != rhs.staticRegistrations {
             return false
         }
@@ -15162,7 +15142,6 @@ extension OidcConfiguration: Equatable, Hashable {
         hasher.combine(logoUri)
         hasher.combine(tosUri)
         hasher.combine(policyUri)
-        hasher.combine(contacts)
         hasher.combine(staticRegistrations)
     }
 }
@@ -15178,7 +15157,6 @@ public struct FfiConverterTypeOidcConfiguration: FfiConverterRustBuffer {
                 logoUri: FfiConverterOptionString.read(from: &buf), 
                 tosUri: FfiConverterOptionString.read(from: &buf), 
                 policyUri: FfiConverterOptionString.read(from: &buf), 
-                contacts: FfiConverterOptionSequenceString.read(from: &buf), 
                 staticRegistrations: FfiConverterDictionaryStringString.read(from: &buf)
         )
     }
@@ -15190,7 +15168,6 @@ public struct FfiConverterTypeOidcConfiguration: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.logoUri, into: &buf)
         FfiConverterOptionString.write(value.tosUri, into: &buf)
         FfiConverterOptionString.write(value.policyUri, into: &buf)
-        FfiConverterOptionSequenceString.write(value.contacts, into: &buf)
         FfiConverterDictionaryStringString.write(value.staticRegistrations, into: &buf)
     }
 }
@@ -34197,7 +34174,7 @@ private var initializationResult: InitializationResult = {
     if (uniffi_matrix_sdk_ffi_checksum_method_clientbuilder_build() != 56018) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_matrix_sdk_ffi_checksum_method_clientbuilder_build_with_qr_code() != 11583) {
+    if (uniffi_matrix_sdk_ffi_checksum_method_clientbuilder_build_with_qr_code() != 42452) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_matrix_sdk_ffi_checksum_method_clientbuilder_cross_process_store_locks_holder_name() != 46627) {
@@ -34459,9 +34436,6 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_matrix_sdk_ffi_checksum_method_notificationsettings_unmute_room() != 47580) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_matrix_sdk_ffi_checksum_method_qrcodedata_server_name() != 63285) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_matrix_sdk_ffi_checksum_method_room_active_members_count() != 61905) {
