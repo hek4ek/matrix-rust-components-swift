@@ -10,12 +10,23 @@ struct Release: AsyncParsableCommand {
     @Flag(help: "Prevents the run from pushing anything to GitHub.")
     var localOnly = false
     
-    var apiToken = (try? NetrcParser.parse(file: FileManager.default.homeDirectoryForCurrentUser.appending(component: ".netrc")))!
-        .authorization(for: URL(string: "https://api.github.com")!)!
-        .password
-    
-    var sourceRepo = Repository(owner: "matrix-org", name: "matrix-rust-sdk")
-    var packageRepo = Repository(owner: "matrix-org", name: "matrix-rust-components-swift")
+    var apiToken: String {
+        get throws {
+            if let envToken = ProcessInfo.processInfo.environment["GITHUB_TOKEN"] {
+                return envToken
+            }
+            else if let netrcToken = try? NetrcParser.parse(file: FileManager.default.homeDirectoryForCurrentUser.appending(component: ".netrc"))?
+                .authorization(for: URL(string: "https://api.github.com")!)?
+                .password {
+                return netrcToken
+            }
+            else {
+                throw ValidationError("GitHub token not found. Set GITHUB_TOKEN env variable or add it to ~/.netrc.")
+            }
+        }
+    }    
+    var sourceRepo = Repository(owner: "hek4ek", name: "matrix-rust-sdk")
+    var packageRepo = Repository(owner: "hek4ek", name: "matrix-rust-components-swift")
     
     var packageDirectory = URL(fileURLWithPath: #file)
         .deletingLastPathComponent() // Release.swift
