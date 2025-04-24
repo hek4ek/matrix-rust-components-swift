@@ -56,8 +56,9 @@ jobs:
 
       # Шаг 5: Сборка XCFramework
       - name: Build XCFramework
-        working-directory: ./matrix-rust-components-swift/Tools/Release
-        run: 
+        working-directory: ./matrix-rust-sdk
+        run: |
+          cd Tools/Release
           swift run release --version ${{ steps.version.outputs.version }}
 
       # Шаг 6: Обновление Package.swift
