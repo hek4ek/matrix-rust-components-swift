@@ -16,6 +16,7 @@ jobs:
 
       # Шаг 1: Клонирование и модификация исходного кода
       - name: Clone and modify matrix-rust-sdk
+        working-directory: ./../
         run: |
           # Клонируем репозиторий
           git clone https://github.com/matrix-org/matrix-rust-sdk.git
@@ -59,7 +60,9 @@ jobs:
         working-directory: ./
         run: |
           echo "current dir: $(pwd)"
+          echo "current dir: $(ls)"
           cd ..
+          echo "current dir: $(pwd)"
           echo "current dir: $(ls)"
           swift run --package-path ./matrix-rust-components-swift/Tools/Release release --version v1.0.18-custom-20250423
 
