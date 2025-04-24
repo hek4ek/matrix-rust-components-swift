@@ -56,14 +56,11 @@ jobs:
 
       # Шаг 5: Сборка XCFramework
       - name: Build XCFramework
-        working-directory: ./Tools/Release
+        working-directory: ./
         run: |
           echo "current dir: $(pwd)"
           echo "current dir: $(ls)"
-          cd ..
-          echo "current dir: $(pwd)"
-          echo "current dir: $(ls)"
-          swift run release --version ${{ steps.version.outputs.version }}
+          swift run --package-path ./Tools/Release release --version v1.0.18-custom-20250423
 
       # Шаг 6: Обновление Package.swift
       - name: Update Package.swift
