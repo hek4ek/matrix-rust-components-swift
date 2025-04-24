@@ -58,7 +58,11 @@ jobs:
       - name: Build XCFramework
         working-directory: ./matrix-rust-sdk
         run: |
-          cd Tools/Release
+          echo "current dir: $(pwd)"
+          cd ..
+          echo "current dir: $(pwd)"
+          cd ./matrix-rust-components-swift/Tools/Release
+          echo "current dir: $(pwd)"
           swift run release --version ${{ steps.version.outputs.version }}
 
       # Шаг 6: Обновление Package.swift
