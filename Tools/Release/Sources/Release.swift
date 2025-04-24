@@ -38,22 +38,25 @@ struct Release: AsyncParsableCommand {
         .appending(component: "matrix-rust-sdk")
     
     mutating func run() async throws {
-        let package = Package(repository: packageRepo, directory: packageDirectory, apiToken: apiToken, urlSession: localOnly ? .releaseMock : .shared)
-        Zsh.defaultDirectory = package.directory
+        //let package = Package(repository: packageRepo, directory: packageDirectory, apiToken: apiToken, urlSession: localOnly ? .releaseMock : .shared)
+        //Zsh.defaultDirectory = package.directory
         
-        Log.info("Build directory: \(buildDirectory.path())")
+        //Log.info("Build directory: \(buildDirectory.path())")
         
         let product = try build()
-        let (zipFileURL, checksum) = try package.zipBinary(with: product)
+        //let (zipFileURL, checksum) = try package.zipBinary(with: product)
         
-        try await updatePackage(package, with: product, checksum: checksum)
-        try commitAndPush(package, with: product)
-        try await package.makeRelease(with: product, uploading: zipFileURL)
+        //try await updatePackage(package, with: product, checksum: checksum)
+        //try commitAndPush(package, with: product)
+        //try await package.makeRelease(with: product, uploading: zipFileURL)
     }
     
     mutating func build() throws -> BuildProduct {
+        Log.info("build()")
         let git = Git(directory: buildDirectory)
+        Log.info("post Git(directory: buildDirectory)")
         let commitHash = try git.commitHash
+        Log.info("post try git.commitHash")
         let branch = try git.branchName
         
         Log.info("Building \(branch) at \(commitHash)")
