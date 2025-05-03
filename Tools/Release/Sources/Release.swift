@@ -34,7 +34,7 @@ struct Release: AsyncParsableCommand {
         }
     }    
     var sourceRepo = Repository(owner: "matrix-org", name: "matrix-rust-sdk")
-    var packageRepo = Repository(owner: "matrix-org", name: "matrix-rust-components-swift")
+    var packageRepo = Repository(owner: "hek4ek", name: "matrix-rust-components-swift")
     
     var packageDirectory = URL(fileURLWithPath: #file)
         .deletingLastPathComponent() // Release.swift
@@ -74,9 +74,7 @@ struct Release: AsyncParsableCommand {
         
         try await updatePackage(package, with: product, checksum: checksum)
         try commitAndPush(package, with: product)
-        try await makeRelease(with: product, uploading: zipFileURL)
-
-//        try await package.makeRelease(with: product, uploading: zipFileURL)
+        try await package.makeRelease(with: product, uploading: zipFileURL)
     }
     
     mutating func build() throws -> BuildProduct {
