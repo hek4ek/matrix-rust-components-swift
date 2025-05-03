@@ -81,7 +81,7 @@ struct Release: AsyncParsableCommand {
         Log.info("Copying sources")
         let source = product.directory.appending(component: "swift", directoryHint: .isDirectory)
         let destination = package.directory.appending(component: "Sources/MatrixRustSDK", directoryHint: .isDirectory)
-        try Zsh.run(command: "rsync -a --delete "\(source.path())" "\(destination.path())"")
+        try Zsh.run(command: "rsync -a --delete '\(source.path())' '\(destination.path())'")
         
         try await package.updateManifest(with: product, checksum: checksum)
     }
