@@ -11,7 +11,7 @@ struct Release: AsyncParsableCommand {
     var localOnly = false
     
     @Flag(help: "Test mode with mock data")
-    var testMode = true
+    var testMode = false
 
     var apiToken: String {
         get {

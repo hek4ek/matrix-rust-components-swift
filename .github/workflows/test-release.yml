@@ -31,4 +31,5 @@ jobs:
           # Запускаем ТОЛЬКО релиз с тестовой версией
           swift run --package-path Tools/Release release \
             --version ${{ inputs.version }} \
-            --local-only  # Отключаем push
+            --local-only \
+            --test-mode
