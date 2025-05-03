@@ -751,6 +751,11 @@ public protocol ClientProtocol : AnyObject {
     func ignoredUsers() async throws  -> [String]
     
     /**
+     * Checks if the server supports the report room API.
+     */
+    func isReportRoomApiSupported() async throws  -> Bool
+    
+    /**
      * Checks if a room alias is not in use yet.
      *
      * Returns:
@@ -1600,6 +1605,26 @@ open func ignoredUsers()async throws  -> [String] {
             completeFunc: ffi_matrix_sdk_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_matrix_sdk_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceString.lift,
+            errorHandler: FfiConverterTypeClientError.lift
+        )
+}
+    
+    /**
+     * Checks if the server supports the report room API.
+     */
+open func isReportRoomApiSupported()async throws  -> Bool {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_matrix_sdk_ffi_fn_method_client_is_report_room_api_supported(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_matrix_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_matrix_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_matrix_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
             errorHandler: FfiConverterTypeClientError.lift
         )
 }
@@ -4495,6 +4520,14 @@ public protocol NotificationClientProtocol : AnyObject {
      */
     func getNotification(roomId: String, eventId: String) async throws  -> NotificationItem?
     
+    /**
+     * Fetches a room by its ID using the in-memory state store backed client.
+     *
+     * Useful to retrieve room information after running the limited
+     * notification client sliding sync loop.
+     */
+    func getRoom(roomId: String) throws  -> Room?
+    
 }
 
 open class NotificationClient:
@@ -4557,6 +4590,20 @@ open func getNotification(roomId: String, eventId: String)async throws  -> Notif
             liftFunc: FfiConverterOptionTypeNotificationItem.lift,
             errorHandler: FfiConverterTypeClientError.lift
         )
+}
+    
+    /**
+     * Fetches a room by its ID using the in-memory state store backed client.
+     *
+     * Useful to retrieve room information after running the limited
+     * notification client sliding sync loop.
+     */
+open func getRoom(roomId: String)throws  -> Room? {
+    return try  FfiConverterOptionTypeRoom.lift(try rustCallWithError(FfiConverterTypeClientError.lift) {
+    uniffi_matrix_sdk_ffi_fn_method_notificationclient_get_room(self.uniffiClonePointer(),
+        FfiConverterString.lower(roomId),$0
+    )
+})
 }
     
 
@@ -18432,9 +18479,9 @@ public func FfiConverterTypeUnstableVoiceContent_lower(_ value: UnstableVoiceCon
 
 public struct UploadParameters {
     /**
-     * Filename (previously called "url") for the media to be sent.
+     * Source from which to upload data
      */
-    public var filename: String
+    public var source: UploadSource
     /**
      * Optional non-formatted caption, for clients that support it.
      */
@@ -18462,8 +18509,8 @@ public struct UploadParameters {
     // declare one manually.
     public init(
         /**
-         * Filename (previously called "url") for the media to be sent.
-         */filename: String, 
+         * Source from which to upload data
+         */source: UploadSource, 
         /**
          * Optional non-formatted caption, for clients that support it.
          */caption: String?, 
@@ -18481,7 +18528,7 @@ public struct UploadParameters {
          *
          * Watching progress only works with the synchronous method, at the moment.
          */useSendQueue: Bool) {
-        self.filename = filename
+        self.source = source
         self.caption = caption
         self.formattedCaption = formattedCaption
         self.mentions = mentions
@@ -18494,7 +18541,7 @@ public struct UploadParameters {
 
 extension UploadParameters: Equatable, Hashable {
     public static func ==(lhs: UploadParameters, rhs: UploadParameters) -> Bool {
-        if lhs.filename != rhs.filename {
+        if lhs.source != rhs.source {
             return false
         }
         if lhs.caption != rhs.caption {
@@ -18516,7 +18563,7 @@ extension UploadParameters: Equatable, Hashable {
     }
 
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(filename)
+        hasher.combine(source)
         hasher.combine(caption)
         hasher.combine(formattedCaption)
         hasher.combine(mentions)
@@ -18530,7 +18577,7 @@ public struct FfiConverterTypeUploadParameters: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UploadParameters {
         return
             try UploadParameters(
-                filename: FfiConverterString.read(from: &buf), 
+                source: FfiConverterTypeUploadSource.read(from: &buf), 
                 caption: FfiConverterOptionString.read(from: &buf), 
                 formattedCaption: FfiConverterOptionTypeFormattedBody.read(from: &buf), 
                 mentions: FfiConverterOptionTypeMentions.read(from: &buf), 
@@ -18540,7 +18587,7 @@ public struct FfiConverterTypeUploadParameters: FfiConverterRustBuffer {
     }
 
     public static func write(_ value: UploadParameters, into buf: inout [UInt8]) {
-        FfiConverterString.write(value.filename, into: &buf)
+        FfiConverterTypeUploadSource.write(value.source, into: &buf)
         FfiConverterOptionString.write(value.caption, into: &buf)
         FfiConverterOptionTypeFormattedBody.write(value.formattedCaption, into: &buf)
         FfiConverterOptionTypeMentions.write(value.mentions, into: &buf)
@@ -28471,6 +28518,86 @@ extension Tweak: Equatable, Hashable {}
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * A source for uploading a file
+ */
+
+public enum UploadSource {
+    
+    /**
+     * Upload source is a file on disk
+     */
+    case file(
+        /**
+         * Path to file
+         */filename: String
+    )
+    /**
+     * Upload source is data in memory
+     */
+    case data(
+        /**
+         * Bytes being uploaded
+         */bytes: Data, 
+        /**
+         * Filename to associate with bytes
+         */filename: String
+    )
+}
+
+
+public struct FfiConverterTypeUploadSource: FfiConverterRustBuffer {
+    typealias SwiftType = UploadSource
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UploadSource {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .file(filename: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 2: return .data(bytes: try FfiConverterData.read(from: &buf), filename: try FfiConverterString.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UploadSource, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .file(filename):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(filename, into: &buf)
+            
+        
+        case let .data(bytes,filename):
+            writeInt(&buf, Int32(2))
+            FfiConverterData.write(bytes, into: &buf)
+            FfiConverterString.write(filename, into: &buf)
+            
+        }
+    }
+}
+
+
+public func FfiConverterTypeUploadSource_lift(_ buf: RustBuffer) throws -> UploadSource {
+    return try FfiConverterTypeUploadSource.lift(buf)
+}
+
+public func FfiConverterTypeUploadSource_lower(_ value: UploadSource) -> RustBuffer {
+    return FfiConverterTypeUploadSource.lower(value)
+}
+
+
+
+extension UploadSource: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
 public enum VerificationState {
     
@@ -34048,6 +34175,9 @@ private var initializationResult: InitializationResult = {
     if (uniffi_matrix_sdk_ffi_checksum_method_client_ignored_users() != 49620) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_matrix_sdk_ffi_checksum_method_client_is_report_room_api_supported() != 17934) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_matrix_sdk_ffi_checksum_method_client_is_room_alias_available() != 23322) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -34373,6 +34503,9 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_matrix_sdk_ffi_checksum_method_notificationclient_get_notification() != 2524) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_matrix_sdk_ffi_checksum_method_notificationclient_get_room() != 26581) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_matrix_sdk_ffi_checksum_method_notificationsettings_can_homeserver_push_encrypted_event_to_device() != 37323) {
