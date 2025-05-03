@@ -23,7 +23,18 @@ jobs:
           cd matrix-rust-sdk
           
           # Модифицируем файл
-          sed -i '' 's/if self\.is_direct().await.unwrap_or(false) {.*NotifyType::Notify.*}/NotifyType::Ring,/g' crates/matrix-sdk/src/room/mod.rs
+          perl -i -pe '
+            BEGIN { $/ = undef; }
+            s{
+              if\s+self\.is_direct\(\)\.await\.unwrap_or\(false\)\s*\{\s*
+              NotifyType::Ring\s*
+              \}\s*
+              else\s*
+              \{\s*
+              NotifyType::Notify\s*
+              \}
+            }{NotifyType::Ring}gsx;
+          ' crates/matrix-sdk/src/room/mod.rs
           
           # Проверяем изменения
           git diff crates/matrix-sdk/src/room/mod.rs || echo "Changes applied"
@@ -51,7 +62,7 @@ jobs:
         id: version
         working-directory: ./../matrix-rust-sdk
         run: |
-          DATE_VERSION="v1.0.18-custom-$(date +%Y%m%d)"
+          DATE_VERSION="v1.0.0-withring-$(date +%Y%m%d-%H%M)"
           echo "version=${DATE_VERSION}" >> $GITHUB_OUTPUT
           echo "Generated version: ${DATE_VERSION}"
 
