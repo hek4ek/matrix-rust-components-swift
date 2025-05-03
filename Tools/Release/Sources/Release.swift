@@ -13,15 +13,20 @@ struct Release: AsyncParsableCommand {
     var apiToken: String {
         get {
             if let envToken = ProcessInfo.processInfo.environment["GITHUB_TOKEN"] {
+                Log.info("apiToken from GITHUB_TOKEN")
                 return envToken
             }
-            else if let netrcToken = try? NetrcParser.parse(file: FileManager.default.homeDirectoryForCurrentUser.appending(component: ".netrc"))
-                .authorization(for: URL(string: "https://api.github.com")!)?
-                .password {
-                return netrcToken
-            }
-            else {
-                return "GitHub token not found. Set GITHUB_TOKEN env variable or add it to ~/.netrc."
+            else{ 
+                Log.info("apiToken try from .netrc")
+                if let netrcToken = try? NetrcParser.parse(file: FileManager.default.homeDirectoryForCurrentUser.appending(component: ".netrc"))
+                    .authorization(for: URL(string: "https://api.github.com")!)?
+                    .password {
+                    Log.info("apiToken received from .netrc")
+                    return netrcToken
+                }
+                else {
+                    return "GitHub token not found. Set GITHUB_TOKEN env variable or add it to ~/.netrc."
+                }
             }
         }
     }    
@@ -38,17 +43,17 @@ struct Release: AsyncParsableCommand {
         .appending(component: "matrix-rust-sdk")
     
     mutating func run() async throws {
-        //let package = Package(repository: packageRepo, directory: packageDirectory, apiToken: apiToken, urlSession: localOnly ? .releaseMock : .shared)
-        //Zsh.defaultDirectory = package.directory
+        let package = Package(repository: packageRepo, directory: packageDirectory, apiToken: apiToken, urlSession: localOnly ? .releaseMock : .shared)
+        Zsh.defaultDirectory = package.directory
         
-        //Log.info("Build directory: \(buildDirectory.path())")
+        Log.info("Build directory: \(buildDirectory.path())")
         
         let product = try build()
-        //let (zipFileURL, checksum) = try package.zipBinary(with: product)
+        let (zipFileURL, checksum) = try package.zipBinary(with: product)
         
-        //try await updatePackage(package, with: product, checksum: checksum)
-        //try commitAndPush(package, with: product)
-        //try await package.makeRelease(with: product, uploading: zipFileURL)
+        try await updatePackage(package, with: product, checksum: checksum)
+        try commitAndPush(package, with: product)
+        try await package.makeRelease(with: product, uploading: zipFileURL)
     }
     
     mutating func build() throws -> BuildProduct {
@@ -76,7 +81,7 @@ struct Release: AsyncParsableCommand {
         Log.info("Copying sources")
         let source = product.directory.appending(component: "swift", directoryHint: .isDirectory)
         let destination = package.directory.appending(component: "Sources/MatrixRustSDK", directoryHint: .isDirectory)
-        try Zsh.run(command: "rsync -a --delete '\(source.path())' '\(destination.path())'")
+        try Zsh.run(command: "rsync -a --delete "\(source.path())" "\(destination.path())"")
         
         try await package.updateManifest(with: product, checksum: checksum)
     }
