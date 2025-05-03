@@ -122,47 +122,65 @@ struct Release: AsyncParsableCommand {
         try git.push()
     }
 
-    func makeRelease(with product: BuildProduct, uploading fileURL: URL) async throws {
-        guard !localOnly else {
-            Log.info("Skipping release creation for --local-only")
-            return
+func makeRelease(with product: BuildProduct, uploading fileURL: URL) async throws {
+    guard !localOnly else {
+        Log.info("Skipping release creation for --local-only")
+        return
+    }
+    
+    // 1. Инициализируем URLSession
+    let urlSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30.0
+        config.timeoutIntervalForResource = 60.0
+        return URLSession(configuration: config)
+    }()
+    
+    // 2. Формируем запрос
+    let url = URL(string: "https://api.github.com/repos/\(packageRepo.owner)/\(packageRepo.name)/releases")!
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("token \(apiToken)", forHTTPHeaderField: "Authorization")
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    
+    // 3. Подготавливаем данные
+    let payload: [String: Any] = [
+        "tag_name": product.version,
+        "name": product.version,
+        "body": "Automated release for \(product.version)",
+        "draft": false,
+        "prerelease": false
+    ]
+    
+    do {
+        let jsonData = try JSONSerialization.data(withJSONObject: payload)
+        
+        // 4. Выполняем запрос
+        let (data, response) = try await urlSession.upload(for: request, from: jsonData)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "ReleaseError", code: 0, userInfo: [
+                NSLocalizedDescriptionKey: "Invalid response type"
+            ])
         }
         
-        let url = URL(string: "https://api.github.com/repos/\(packageRepo.owner)/\(packageRepo.name)/releases")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("token \(apiToken)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let payload: [String: Any] = [
-            "tag_name": product.version,
-            "name": product.version,
-            "body": "Automated release for \(product.version)",
-            "draft": false,
-            "prerelease": false
-        ]
-        
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: payload)
-            let (data, response) = try await urlSession.upload(for: request, from: jsonData)
-            
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200..<300).contains(httpResponse.statusCode) else {
-                let body = String(data: data, encoding: .utf8) ?? "Unable to decode response"
-                throw NSError(domain: "ReleaseError", code: 0, userInfo: [
-                    NSLocalizedDescriptionKey: "Failed to create release: \(body)"
-                ])
-            }
-            
+        // 5. Обрабатываем ответ
+        switch httpResponse.statusCode {
+        case 200..<300:
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                let htmlURL = json["html_url"] as? String {
                 Log.info("Release created: \(htmlURL)")
             } else {
-                Log.error("Release created but unexpected response format")
+                Log.info("Unexpected response format: \(String(data: data, encoding: .utf8) ?? "")")
             }
-        } catch {
-            Log.error("Release creation failed: \(error)")
-            throw error
+        default:
+            let errorBody = String(data: data, encoding: .utf8) ?? "No error details"
+            throw NSError(domain: "ReleaseError", code: httpResponse.statusCode, 
+                          userInfo: ["response": errorBody])
         }
+    } catch {
+        Log.info("Release creation failed: \(error)")
+        throw error
     }
+}
 }
