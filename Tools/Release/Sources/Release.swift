@@ -74,7 +74,9 @@ struct Release: AsyncParsableCommand {
         
         try await updatePackage(package, with: product, checksum: checksum)
         try commitAndPush(package, with: product)
-        try await package.makeRelease(with: product, uploading: zipFileURL)
+        try await makeRelease(with: product, uploading: zipFileURL)
+
+//        try await package.makeRelease(with: product, uploading: zipFileURL)
     }
     
     mutating func build() throws -> BuildProduct {
