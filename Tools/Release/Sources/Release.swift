@@ -10,6 +10,9 @@ struct Release: AsyncParsableCommand {
     @Flag(help: "Prevents the run from pushing anything to GitHub.")
     var localOnly = false
     
+    @Flag(help: "Test mode with mock data")
+    var testMode = true
+
     var apiToken: String {
         get {
             if let envToken = ProcessInfo.processInfo.environment["GITHUB_TOKEN"] {
@@ -46,6 +49,24 @@ struct Release: AsyncParsableCommand {
         let package = Package(repository: packageRepo, directory: packageDirectory, apiToken: apiToken, urlSession: localOnly ? .releaseMock : .shared)
         Zsh.defaultDirectory = package.directory
         
+        if testMode {
+            // Мок-данные для теста
+            let product = BuildProduct(
+                sourceRepo: sourceRepo,
+                version: version,
+                commitHash: "test123",
+                branch: "test-branch",
+                directory: packageDirectory.appending(component: "test-mock"),
+                frameworkName: "MatrixSDKFFI.xcframework"
+            )
+            
+            Log.info("try package.makeRelease()")
+            try await package.makeRelease(with: product, uploading: packageDirectory.appending(component: "test.zip"))
+            Log.info("try makeRelease()")
+            try await makeRelease(with: product, uploading: packageDirectory.appending(component: "test.zip"))
+            return
+        }
+
         Log.info("Build directory: \(buildDirectory.path())")
         
         let product = try build()
@@ -99,5 +120,49 @@ struct Release: AsyncParsableCommand {
         }
         
         try git.push()
+    }
+
+    func makeRelease(with product: BuildProduct, uploading fileURL: URL) async throws {
+        guard !localOnly else {
+            Log.info("Skipping release creation for --local-only")
+            return
+        }
+        
+        let url = URL(string: "https://api.github.com/repos/\(packageRepo.owner)/\(packageRepo.name)/releases")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("token \(apiToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let payload: [String: Any] = [
+            "tag_name": product.version,
+            "name": product.version,
+            "body": "Automated release for \(product.version)",
+            "draft": false,
+            "prerelease": false
+        ]
+        
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: payload)
+            let (data, response) = try await urlSession.upload(for: request, from: jsonData)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200..<300).contains(httpResponse.statusCode) else {
+                let body = String(data: data, encoding: .utf8) ?? "Unable to decode response"
+                throw NSError(domain: "ReleaseError", code: 0, userInfo: [
+                    NSLocalizedDescriptionKey: "Failed to create release: \(body)"
+                ])
+            }
+            
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let htmlURL = json["html_url"] as? String {
+                Log.info("Release created: \(htmlURL)")
+            } else {
+                Log.error("Release created but unexpected response format")
+            }
+        } catch {
+            Log.error("Release creation failed: \(error)")
+            throw error
+        }
     }
 }

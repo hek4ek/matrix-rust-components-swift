@@ -1,0 +1,34 @@
+name: Test Release Only
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Test version'
+        required: true
+        default: 'v0.0.1-test'
+
+env:
+  GITHUB_TOKEN: ${{ secrets.PAT }}
+
+jobs:
+  test-release:
+    runs-on: macos-latest
+    timeout-minutes: 5  # Ограничиваем время выполнения
+    
+    steps:
+      - uses: actions/checkout@v4
+        
+      - name: Setup Swift
+        run: swift --version
+
+      - name: Run Release Script (Test Mode)
+        run: |
+          # Создаем заглушки вместо реальной сборки
+          mkdir -p bindings/apple/generated/
+          touch bindings/apple/generated/MatrixSDKFFI.xcframework.zip
+          
+          # Запускаем ТОЛЬКО релиз с тестовой версией
+          swift run --package-path Tools/Release release \
+            --version ${{ inputs.version }} \
+            --local-only  # Отключаем push
